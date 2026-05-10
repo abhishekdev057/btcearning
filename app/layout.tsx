@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
@@ -43,6 +44,12 @@ export default function RootLayout({
         {children}
         <Toaster />
         <Analytics />
+        <Script
+          src="https://quge5.com/88/tag.min.js"
+          data-zone="238067"
+          data-cfasync="false"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )
