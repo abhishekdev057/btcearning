@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Droplets, Bitcoin, Clock, Gift, AlertCircle } from 'lucide-react'
+import { Droplets, Bitcoin, Clock, Gift, AlertCircle, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatSatoshi } from '@/lib/types'
 import useSWR from 'swr'
 import { toast } from 'sonner'
+import { AdSlot, openSponsorLink, triggerRewardAdEvent } from '@/components/ads/ad-network'
 
 const FAUCET_COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 const FAUCET_REWARD_MIN = 10
@@ -76,6 +77,7 @@ export default function FaucetPage() {
     setIsClaiming(true)
     setError(null)
     setLastReward(null)
+    triggerRewardAdEvent('faucet-claim')
 
     try {
       const supabase = createClient()
@@ -111,71 +113,98 @@ export default function FaucetPage() {
         <p className="text-muted-foreground">Claim a protected reward every hour. Cooldown is enforced server-side.</p>
       </div>
 
+      <div className="hidden justify-center sm:flex">
+        <AdSlot variant="leaderboard" />
+      </div>
+
       {/* Main Faucet Card */}
-      <Card className="glass-panel overflow-hidden">
-        <CardHeader className="border-b border-border/70 bg-chart-2/10 text-center">
-          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border border-chart-2/25 bg-chart-2/15 pulse-ring">
-            <Droplets className="h-10 w-10 text-chart-2" />
-          </div>
-          <CardTitle className="text-2xl text-foreground">Free Bitcoin Faucet</CardTitle>
-          <CardDescription>
-            Claim {FAUCET_REWARD_MIN} - {FAUCET_REWARD_MAX} satoshi every hour
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-6 p-6">
-          {/* Reward Display */}
-          {lastReward !== null && (
-            <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/15 px-4 py-2">
-              <Gift className="h-5 w-5 text-success" />
-              <span className="text-lg font-bold text-success">
-                +{formatSatoshi(lastReward)} claimed!
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_178px]">
+        <Card className="glass-panel overflow-hidden">
+          <CardHeader className="border-b border-border/70 bg-chart-2/10 text-center">
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border border-chart-2/25 bg-chart-2/15 pulse-ring">
+              <Droplets className="h-10 w-10 text-chart-2" />
+            </div>
+            <CardTitle className="text-2xl text-foreground">Free Bitcoin Faucet</CardTitle>
+            <CardDescription>
+              Claim {FAUCET_REWARD_MIN} - {FAUCET_REWARD_MAX} satoshi every hour
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-6 p-6">
+            {/* Reward Display */}
+            {lastReward !== null && (
+              <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/15 px-4 py-2">
+                <Gift className="h-5 w-5 text-success" />
+                <span className="text-lg font-bold text-success">
+                  +{formatSatoshi(lastReward)} claimed!
+                </span>
+              </div>
+            )}
+
+            {/* Timer or Claim Button */}
+            {!canClaim ? (
+              <div className="flex w-full flex-col items-center gap-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-5 w-5" />
+                  <span>Next claim available in:</span>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/50 px-6 py-4 font-mono text-4xl font-bold text-foreground">
+                  {formatTimeLeft(timeLeft)}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Come back later to claim more free Bitcoin!
+                </p>
+                <div className="flex w-full max-w-xl flex-col items-center gap-3 rounded-xl border border-border/70 bg-background/45 p-4">
+                  <AdSlot variant="leaderboard" className="hidden sm:block" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openSponsorLink('faucet-cooldown')}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open Sponsor
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={claimFaucet}
+                disabled={isClaiming}
+                size="lg"
+                className="gap-2 px-8 py-6 text-lg"
+              >
+                <Droplets className="h-5 w-5" />
+                {isClaiming ? 'Claiming...' : 'Claim Now'}
+              </Button>
+            )}
+
+            {error && (
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            {/* Current Balance */}
+            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/35 px-4 py-2">
+              <Bitcoin className="h-4 w-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Your balance:</span>
+              <span className="font-medium text-foreground">
+                {formatSatoshi(userData?.balance || 0)}
               </span>
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-          {/* Timer or Claim Button */}
-          {!canClaim ? (
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-5 w-5" />
-                <span>Next claim available in:</span>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/50 px-6 py-4 font-mono text-4xl font-bold text-foreground">
-                {formatTimeLeft(timeLeft)}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Come back later to claim more free Bitcoin!
-              </p>
-            </div>
-          ) : (
-            <Button 
-              onClick={claimFaucet} 
-              disabled={isClaiming}
-              size="lg"
-              className="gap-2 text-lg px-8 py-6"
-            >
-              <Droplets className="h-5 w-5" />
-              {isClaiming ? 'Claiming...' : 'Claim Now'}
-            </Button>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
-
-          {/* Current Balance */}
-          <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/35 px-4 py-2">
-            <Bitcoin className="h-4 w-4 text-primary" />
-            <span className="text-sm text-muted-foreground">Your balance:</span>
-            <span className="font-medium text-foreground">
-              {formatSatoshi(userData?.balance || 0)}
-            </span>
+        <div className="hidden xl:block">
+          <div className="sticky top-24">
+            <AdSlot variant="skyscraper" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {lastReward !== null && <AdSlot variant="native" />}
 
       {/* Info Card */}
       <Card className="border-primary/20 bg-primary/5">

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatBtc, formatSatoshi } from '@/lib/types'
+import { AdSlot } from '@/components/ads/ad-network'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -124,6 +125,10 @@ export default async function DashboardPage() {
         <MetricCard title="Network" value={totalReferrals} detail={`${totalCampaigns} advertiser campaign${totalCampaigns === 1 ? '' : 's'}`} icon={Users} tone="info" />
       </div>
 
+      <div className="hidden justify-center sm:flex">
+        <AdSlot variant="leaderboard" />
+      </div>
+
       <div className="grid gap-7 xl:grid-cols-[1.05fr_0.95fr]">
         <Card className="glass-panel">
           <CardHeader>
@@ -207,6 +212,8 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AdSlot variant="native" />
 
       <Card className="glass-panel overflow-hidden">
         <CardContent className="grid gap-6 p-5 md:grid-cols-3 md:p-6">
