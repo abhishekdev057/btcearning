@@ -10,8 +10,8 @@ import type { Ad } from '@/lib/types'
 import { formatSatoshi } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { EmptyState } from '@/components/dashboard/empty-state'
 import { AdSlot, openSponsorLink, triggerRewardAdEvent } from '@/components/ads/ad-network'
+import { SponsorViewQueue } from '@/components/ads/sponsor-view-queue'
 
 interface SurfAdsClientProps {
   ads: Ad[]
@@ -29,16 +29,19 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
 
   const currentAd = ads[currentAdIndex]
 
-  const startViewing = useCallback(() => {
-    if (!currentAd) return
+  const startViewing = useCallback((adIndex = currentAdIndex) => {
+    const adToView = ads[adIndex]
+    if (!adToView) return
+
+    setCurrentAdIndex(adIndex)
     setViewState('viewing')
-    setTimeLeft(currentAd.view_duration)
+    setTimeLeft(adToView.view_duration)
     setError(null)
 
     // Open the ad URL in a new window
-    window.open(currentAd.url, '_blank', 'noopener,noreferrer')
+    window.open(adToView.url, '_blank', 'noopener,noreferrer')
     triggerRewardAdEvent('surf-start')
-  }, [currentAd])
+  }, [ads, currentAdIndex])
 
   const completeView = useCallback(async () => {
     if (!currentAd) return
@@ -100,12 +103,13 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
           <p className="text-muted-foreground">View websites and earn Bitcoin</p>
         </div>
 
-        <EmptyState
-          icon={AlertCircle}
-          title="No ads available"
-          description="There are no active campaigns ready for your account right now. Try the faucet or check back after advertisers add budget."
-          actionHref="/dashboard/faucet"
-          actionLabel="Try Faucet"
+        <div className="hidden justify-center sm:flex">
+          <AdSlot variant="leaderboard" />
+        </div>
+
+        <SponsorViewQueue
+          title="Sponsor views are ready"
+          description="Network sponsor checks are available right now for users."
         />
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_178px]">
@@ -145,6 +149,86 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
           {currentAdIndex + 1} / {ads.length} ads
         </span>
       </div>
+
+      <section className="rounded-xl border border-border/70 bg-card/65 p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">Available ads</p>
+            <h2 className="mt-2 text-xl font-semibold text-foreground">Campaign list</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Pick any campaign and run the timer check before reward credit.</p>
+          </div>
+          <div className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+            {ads.length} ready
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {ads.map((ad, index) => {
+            const isCurrent = index === currentAdIndex
+            const isViewing = isCurrent && viewState === 'viewing'
+            const isCompleted = isCurrent && viewState === 'completed'
+
+            return (
+              <div
+                key={ad.id}
+                className={`rounded-lg border p-4 transition duration-300 ${
+                  isCurrent
+                    ? 'border-primary/45 bg-primary/10'
+                    : 'border-border/60 bg-background/45 hover:border-primary/35'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">{ad.title}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                      {ad.description || 'Open this sponsor page and complete the timer.'}
+                    </p>
+                  </div>
+                  <div className="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                    +{formatSatoshi(ad.reward_satoshi)}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted/55 px-2 py-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {ad.view_duration}s
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted/55 px-2 py-1">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    {isCompleted ? 'checked' : 'timer check'}
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  className="mt-4 w-full gap-2"
+                  onClick={() => startViewing(index)}
+                  disabled={viewState === 'viewing'}
+                  variant={isCompleted ? 'secondary' : 'default'}
+                >
+                  {isViewing ? (
+                    <>
+                      <Clock className="h-4 w-4" />
+                      Viewing
+                    </>
+                  ) : isCompleted ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Viewed
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4" />
+                      View
+                    </>
+                  )}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      </section>
 
       {/* Current Ad Card */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_178px]">
@@ -243,7 +327,7 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
               {/* Action Buttons */}
               <div className="flex flex-wrap justify-center gap-4">
                 {viewState === 'idle' && (
-                  <Button onClick={startViewing} size="lg" className="gap-2">
+                  <Button onClick={() => startViewing()} size="lg" className="gap-2">
                     <Play className="h-4 w-4" />
                     Start Viewing ({currentAd.view_duration}s)
                   </Button>
@@ -283,6 +367,12 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
       </div>
 
       {viewState === 'completed' && <AdSlot variant="native" />}
+
+      <SponsorViewQueue
+        compact
+        title="More sponsor views"
+        description="Extra sponsor checks stay available between campaign views."
+      />
 
       {/* Info */}
       <Card className="border-primary/20 bg-primary/5">

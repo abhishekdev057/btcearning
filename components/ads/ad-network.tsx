@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
-type AdSlotVariant = 'leaderboard' | 'skyscraper' | 'native'
+export type AdSlotVariant = 'leaderboard' | 'skyscraper' | 'native'
 
 type IframeAdConfig = {
   kind: 'iframe'
@@ -184,37 +185,51 @@ export function AdSlot({
   const isNative = config.kind === 'native'
   const iframeWidth = isNative ? '100%' : config.width
   const iframeHeight = config.height
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    setIsLoaded(false)
+  }, [variant])
 
   return (
     <aside
       className={cn(
-        'rounded-lg border border-border/60 bg-background/45 p-2 shadow-sm shadow-black/20',
-        variant === 'skyscraper' && 'w-[178px]',
+        'overflow-hidden rounded-lg border border-border/50 bg-background/35 p-2 shadow-sm shadow-black/20',
+        variant === 'skyscraper' && 'w-[176px]',
         variant === 'leaderboard' && 'w-full max-w-[486px]',
         variant === 'native' && 'w-full',
         className,
       )}
-      aria-label={`${config.name} sponsored advertisement`}
+      aria-label="Sponsored advertisement"
     >
-      <div className="mb-2 flex items-center justify-between gap-3 px-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        <span>Sponsored</span>
-        <span>{config.name}</span>
-      </div>
       <div
         className={cn(
-          'flex min-h-[60px] items-center justify-center overflow-hidden rounded-md bg-card/50',
+          'relative flex items-center justify-center overflow-hidden rounded-md bg-card/45',
+          variant === 'leaderboard' && 'min-h-[60px]',
+          variant === 'skyscraper' && 'min-h-[300px]',
+          variant === 'native' && 'min-h-[300px]',
           frameClassName,
         )}
       >
+        <div
+          className={cn(
+            'absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.08),transparent)] opacity-100 transition-opacity duration-500 motion-safe:animate-pulse',
+            isLoaded && 'opacity-0',
+          )}
+        />
         <iframe
-          title={`${config.name} sponsored slot`}
+          title="Sponsored placement"
           srcDoc={buildSrcDoc(config)}
           width={iframeWidth}
           height={iframeHeight}
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-same-origin"
-          className="block max-w-full border-0 bg-transparent"
+          onLoad={() => setIsLoaded(true)}
+          className={cn(
+            'relative z-10 block max-w-full border-0 bg-transparent transition-opacity duration-700',
+            isLoaded ? 'opacity-100' : 'opacity-0',
+          )}
         />
       </div>
     </aside>

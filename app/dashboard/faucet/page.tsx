@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Droplets, Bitcoin, Clock, Gift, AlertCircle, ExternalLink } from 'lucide-react'
+import { Droplets, Bitcoin, Clock, Gift, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatSatoshi } from '@/lib/types'
 import useSWR from 'swr'
 import { toast } from 'sonner'
-import { AdSlot, openSponsorLink, triggerRewardAdEvent } from '@/components/ads/ad-network'
+import { AdSlot, triggerRewardAdEvent } from '@/components/ads/ad-network'
+import { SponsorViewQueue } from '@/components/ads/sponsor-view-queue'
 
 const FAUCET_COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 const FAUCET_REWARD_MIN = 10
@@ -153,19 +154,6 @@ export default function FaucetPage() {
                 <p className="text-sm text-muted-foreground">
                   Come back later to claim more free Bitcoin!
                 </p>
-                <div className="flex w-full max-w-xl flex-col items-center gap-3 rounded-xl border border-border/70 bg-background/45 p-4">
-                  <AdSlot variant="leaderboard" className="hidden sm:block" />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openSponsorLink('faucet-cooldown')}
-                    className="gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Open Sponsor
-                  </Button>
-                </div>
               </div>
             ) : (
               <Button
@@ -203,6 +191,15 @@ export default function FaucetPage() {
           </div>
         </div>
       </div>
+
+      <SponsorViewQueue
+        title="Faucet sponsor checks"
+        description={
+          canClaim
+            ? 'View sponsor placements before or after claiming.'
+            : 'Use these sponsor views while the faucet cools down.'
+        }
+      />
 
       {lastReward !== null && <AdSlot variant="native" />}
 
