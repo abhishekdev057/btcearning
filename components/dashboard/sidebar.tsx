@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Play,
   Droplets,
+  Layers,
   Users,
   Wallet,
   History,
@@ -42,6 +43,7 @@ interface DashboardSidebarProps {
 const earnerNavItems = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Surf Ads', href: '/dashboard/surf', icon: Play },
+  { title: 'Offerwall', href: '/dashboard/offerwall', icon: Layers },
   { title: 'Faucet', href: '/dashboard/faucet', icon: Droplets },
   { title: 'Referrals', href: '/dashboard/referrals', icon: Users },
   { title: 'Withdraw', href: '/dashboard/withdraw', icon: Wallet },

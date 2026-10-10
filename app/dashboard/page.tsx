@@ -11,6 +11,7 @@ import {
   Bitcoin,
   Droplets,
   History,
+  Layers,
   Megaphone,
   MousePointerClick,
   Play,
@@ -96,6 +97,12 @@ export default async function DashboardPage() {
       href: '/dashboard/surf',
     },
     {
+      title: 'Offerwall',
+      description: 'Partner offers, surveys, and tasks',
+      icon: Layers,
+      href: '/dashboard/offerwall',
+    },
+    {
       title: 'Faucet',
       description: faucetAvailable ? 'Ready to claim' : 'Cooldown active',
       icon: Droplets,
@@ -118,6 +125,7 @@ export default async function DashboardPage() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'ad_view': return Play
+      case 'offerwall': return Layers
       case 'faucet': return Droplets
       case 'referral_bonus': return Users
       case 'withdrawal': return Wallet
@@ -129,6 +137,7 @@ export default async function DashboardPage() {
   const getTransactionTone = (type: string) => {
     switch (type) {
       case 'ad_view': return 'info' as const
+      case 'offerwall': return 'info' as const
       case 'faucet': return 'info' as const
       case 'referral_bonus': return 'success' as const
       case 'withdrawal': return 'warning' as const

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play, Droplets, Users, Wallet, Bitcoin, History, TrendingUp, TrendingDown } from 'lucide-react'
+import { Play, Droplets, Layers, Users, Wallet, Bitcoin, History, TrendingUp, TrendingDown } from 'lucide-react'
 import { formatSatoshi } from '@/lib/types'
 import { PageHeader } from '@/components/dashboard/page-header'
 import { MetricCard } from '@/components/dashboard/metric-card'
@@ -26,6 +26,7 @@ export default async function HistoryPage() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'ad_view': return Play
+      case 'offerwall': return Layers
       case 'faucet': return Droplets
       case 'referral_bonus': return Users
       case 'withdrawal': return Wallet
@@ -37,6 +38,7 @@ export default async function HistoryPage() {
   const getTransactionTone = (type: string) => {
     switch (type) {
       case 'ad_view': return 'info' as const
+      case 'offerwall': return 'info' as const
       case 'faucet': return 'info' as const
       case 'referral_bonus': return 'success' as const
       case 'withdrawal': return 'destructive' as const
@@ -48,6 +50,7 @@ export default async function HistoryPage() {
   const getTransactionLabel = (type: string) => {
     switch (type) {
       case 'ad_view': return 'Ad View'
+      case 'offerwall': return 'Offerwall'
       case 'faucet': return 'Faucet Claim'
       case 'referral_bonus': return 'Referral Bonus'
       case 'withdrawal': return 'Withdrawal'

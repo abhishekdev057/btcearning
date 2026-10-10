@@ -63,7 +63,7 @@ export interface Withdrawal {
 export interface Transaction {
   id: string
   user_id: string
-  type: 'ad_view' | 'faucet' | 'referral_bonus' | 'withdrawal' | 'ad_deposit'
+  type: 'ad_view' | 'offerwall' | 'faucet' | 'referral_bonus' | 'withdrawal' | 'ad_deposit'
   amount_satoshi: number
   description: string | null
   created_at: string

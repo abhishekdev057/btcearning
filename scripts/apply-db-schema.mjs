@@ -31,8 +31,18 @@ const client = new Client({
 await client.connect()
 
 try {
-  const sql = fs.readFileSync(new URL('./000_setup_database.sql', import.meta.url), 'utf8')
-  await client.query(sql)
+  const scriptsDir = new URL('./', import.meta.url)
+  const sqlFiles = fs
+    .readdirSync(scriptsDir)
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+
+  for (const file of sqlFiles) {
+    const sql = fs.readFileSync(new URL(file, scriptsDir), 'utf8')
+    await client.query(sql)
+    console.log(`Applied ${file}`)
+  }
+
   console.log('Database schema applied successfully.')
 } finally {
   await client.end()
