@@ -44,6 +44,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script src="https://offerwallapi.com/ads/banner.js?k=7d500cb04584d48d1b8cc24f&s=728x90" async />
+        <script
+          src="https://offerwallapi.com/ads/pop.js?k=667b21017345432463925432&f=1&t=1"
+          data-freq="1"
+          data-hours="1"
+          async
+        />
+      </head>
       <body className="font-sans antialiased">
         {children}
         <Toaster />
