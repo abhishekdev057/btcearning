@@ -1,8 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play, Droplets, Users, Wallet, Bitcoin, History } from 'lucide-react'
+import { Play, Droplets, Users, Wallet, Bitcoin, History, TrendingUp, TrendingDown } from 'lucide-react'
 import { formatSatoshi } from '@/lib/types'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { MetricCard } from '@/components/dashboard/metric-card'
+import { LedgerRow } from '@/components/dashboard/ledger-row'
+import { EmptyState } from '@/components/dashboard/empty-state'
 
 export default async function HistoryPage() {
   const supabase = await createClient()
@@ -12,7 +16,6 @@ export default async function HistoryPage() {
     redirect('/auth/login')
   }
 
-  // Fetch transactions
   const { data: transactions } = await supabase
     .from('transactions')
     .select('*')
@@ -22,12 +25,23 @@ export default async function HistoryPage() {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'ad_view': return <Play className="h-4 w-4 text-chart-1" />
-      case 'faucet': return <Droplets className="h-4 w-4 text-chart-2" />
-      case 'referral_bonus': return <Users className="h-4 w-4 text-chart-3" />
-      case 'withdrawal': return <Wallet className="h-4 w-4 text-destructive" />
-      case 'ad_deposit': return <Bitcoin className="h-4 w-4 text-primary" />
-      default: return <Bitcoin className="h-4 w-4 text-muted-foreground" />
+      case 'ad_view': return Play
+      case 'faucet': return Droplets
+      case 'referral_bonus': return Users
+      case 'withdrawal': return Wallet
+      case 'ad_deposit': return Bitcoin
+      default: return Bitcoin
+    }
+  }
+
+  const getTransactionTone = (type: string) => {
+    switch (type) {
+      case 'ad_view': return 'info' as const
+      case 'faucet': return 'info' as const
+      case 'referral_bonus': return 'success' as const
+      case 'withdrawal': return 'destructive' as const
+      case 'ad_deposit': return 'primary' as const
+      default: return 'primary' as const
     }
   }
 
@@ -44,7 +58,6 @@ export default async function HistoryPage() {
 
   type TransactionRow = NonNullable<typeof transactions>[number]
 
-  // Group transactions by date
   const groupedTransactions = (transactions || []).reduce<Record<string, TransactionRow[]>>((groups, tx) => {
     const date = new Date(tx.created_at).toLocaleDateString()
     if (!groups[date]) {
@@ -54,50 +67,52 @@ export default async function HistoryPage() {
     return groups
   }, {})
 
+  const totalCredited = (transactions || []).filter(tx => tx.amount_satoshi > 0).reduce((sum, tx) => sum + tx.amount_satoshi, 0)
+  const totalDebited = (transactions || []).filter(tx => tx.amount_satoshi < 0).reduce((sum, tx) => sum + Math.abs(tx.amount_satoshi), 0)
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Transaction History</h1>
-        <p className="text-muted-foreground">View all your earnings and withdrawals</p>
-      </div>
+      <PageHeader
+        eyebrow="Ledger"
+        title="Transaction History"
+        description="A complete, protected record of every credit and debit on your account."
+        icon={History}
+      />
+
+      {transactions && transactions.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard title="Total Entries" value={transactions.length} detail="Ledger records shown" icon={History} />
+          <MetricCard title="Total Credited" value={formatSatoshi(totalCredited)} detail="Rewards + bonuses" icon={TrendingUp} tone="success" />
+          <MetricCard title="Total Debited" value={formatSatoshi(totalDebited)} detail="Withdrawals + spend" icon={TrendingDown} tone="warning" />
+        </div>
+      )}
 
       {!transactions || transactions.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <History className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium text-foreground">No Transactions Yet</h3>
-            <p className="text-sm text-muted-foreground text-center mt-2">
-              Start earning by viewing ads or claiming the faucet!
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={History}
+          title="No transactions yet"
+          description="Start earning by viewing ads or claiming the faucet!"
+          actionHref="/dashboard/surf"
+          actionLabel="Find Ads"
+        />
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedTransactions).map(([date, txs]) => (
-            <Card key={date}>
+            <Card key={date} className="glass-panel">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{date}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 {txs?.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                        {getTransactionIcon(tx.type)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {getTransactionLabel(tx.type)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {tx.description || new Date(tx.created_at).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`font-medium ${tx.amount_satoshi >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {tx.amount_satoshi >= 0 ? '+' : ''}{formatSatoshi(tx.amount_satoshi)}
-                    </span>
-                  </div>
+                  <LedgerRow
+                    key={tx.id}
+                    icon={getTransactionIcon(tx.type)}
+                    iconTone={getTransactionTone(tx.type)}
+                    title={getTransactionLabel(tx.type)}
+                    subtitle={tx.description || new Date(tx.created_at).toLocaleTimeString()}
+                    value={`${tx.amount_satoshi >= 0 ? '+' : ''}${formatSatoshi(tx.amount_satoshi)}`}
+                    valueTone={tx.amount_satoshi >= 0 ? 'success' : 'destructive'}
+                  />
                 ))}
               </CardContent>
             </Card>

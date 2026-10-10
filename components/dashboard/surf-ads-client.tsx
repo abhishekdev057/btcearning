@@ -10,8 +10,8 @@ import type { Ad } from '@/lib/types'
 import { formatSatoshi } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { AdSlot, openSponsorLink, triggerRewardAdEvent } from '@/components/ads/ad-network'
-import { SponsorViewQueue } from '@/components/ads/sponsor-view-queue'
+import { EmptyState } from '@/components/dashboard/empty-state'
+import { PageHeader } from '@/components/dashboard/page-header'
 
 interface SurfAdsClientProps {
   ads: Ad[]
@@ -38,9 +38,7 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
     setTimeLeft(adToView.view_duration)
     setError(null)
 
-    // Open the ad URL in a new window
     window.open(adToView.url, '_blank', 'noopener,noreferrer')
-    triggerRewardAdEvent('surf-start')
   }, [ads, currentAdIndex])
 
   const completeView = useCallback(async () => {
@@ -62,7 +60,6 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
       setEarnedTotal((prev) => prev + earned)
       setViewState('completed')
       toast.success(`Reward credited: ${formatSatoshi(earned)}`)
-      triggerRewardAdEvent('surf-complete', { includePopunder: false })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to record view'
       setError(message)
@@ -79,7 +76,6 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
         setTimeLeft((prev) => prev - 1)
       }, 1000)
     } else if (viewState === 'viewing' && timeLeft === 0) {
-      // Complete the view
       completeView()
     }
 
@@ -98,26 +94,20 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
   if (ads.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Surf Ads</h1>
-          <p className="text-muted-foreground">View websites and earn Bitcoin</p>
-        </div>
-
-        <div className="hidden justify-center sm:flex">
-          <AdSlot variant="leaderboard" />
-        </div>
-
-        <SponsorViewQueue
-          title="Sponsor views are ready"
-          description="Network sponsor checks are available right now for users."
+        <PageHeader
+          eyebrow="Verified viewing queue"
+          title="Surf Ads"
+          description="View advertiser campaigns and earn Bitcoin."
+          icon={Play}
         />
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_178px]">
-          <AdSlot variant="native" />
-          <div className="hidden xl:block">
-            <AdSlot variant="skyscraper" />
-          </div>
-        </div>
+        <EmptyState
+          icon={Play}
+          title="No campaigns available right now"
+          description="Check back soon — new advertiser campaigns open up regularly. You can also launch your own campaign from the advertiser dashboard."
+          actionHref="/dashboard/advertiser/create"
+          actionLabel="Create a campaign"
+        />
       </div>
     )
   }
@@ -138,11 +128,6 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
         </div>
       </div>
 
-      <div className="hidden justify-center sm:flex">
-        <AdSlot variant="leaderboard" />
-      </div>
-
-      {/* Progress */}
       <div className="flex items-center gap-4">
         <Progress value={((currentAdIndex + 1) / ads.length) * 100} className="flex-1" />
         <span className="text-sm text-muted-foreground">
@@ -181,7 +166,7 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-foreground">{ad.title}</p>
                     <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                      {ad.description || 'Open this sponsor page and complete the timer.'}
+                      {ad.description || 'Open this advertiser page and complete the timer.'}
                     </p>
                   </div>
                   <div className="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
@@ -230,151 +215,116 @@ export function SurfAdsClient({ ads }: SurfAdsClientProps) {
         </div>
       </section>
 
-      {/* Current Ad Card */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_178px]">
-        <Card className="glass-panel overflow-hidden">
-          <CardHeader className="border-b border-border/70 bg-muted/20">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-foreground">{currentAd.title}</CardTitle>
-                <CardDescription className="mt-1">
-                  {currentAd.description || 'View this website to earn rewards'}
-                </CardDescription>
-              </div>
-              <div className="flex w-fit items-center gap-1 rounded-lg border border-primary/20 bg-primary/15 px-3 py-2">
-                <Bitcoin className="h-4 w-4 text-primary" />
-                <span className="text-sm font-bold text-primary">
-                  +{formatSatoshi(currentAd.reward_satoshi)}
-                </span>
-              </div>
+      <Card className="glass-panel overflow-hidden">
+        <CardHeader className="border-b border-border/70 bg-muted/20">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-foreground">{currentAd.title}</CardTitle>
+              <CardDescription className="mt-1">
+                {currentAd.description || 'View this website to earn rewards'}
+              </CardDescription>
             </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-6">
-              {/* URL Preview */}
-              <div className="flex w-full items-center gap-2 rounded-lg border border-border/70 bg-muted/35 p-3">
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                <span className="flex-1 truncate text-sm text-muted-foreground">
-                  {currentAd.url}
-                </span>
-              </div>
+            <div className="flex w-fit items-center gap-1 rounded-lg border border-primary/20 bg-primary/15 px-3 py-2">
+              <Bitcoin className="h-4 w-4 text-primary" />
+              <span className="text-sm font-bold text-primary">
+                +{formatSatoshi(currentAd.reward_satoshi)}
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex w-full items-center gap-2 rounded-lg border border-border/70 bg-muted/35 p-3">
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 truncate text-sm text-muted-foreground">
+                {currentAd.url}
+              </span>
+            </div>
 
-              {/* View Timer */}
-              {viewState === 'viewing' && (
-                <div className="flex w-full flex-col items-center gap-4">
-                  <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-background/50">
-                    <svg className="absolute h-full w-full -rotate-90">
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="58"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        className="text-muted"
-                      />
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="58"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        strokeDasharray={364}
-                        strokeDashoffset={364 - (364 * (currentAd.view_duration - timeLeft)) / currentAd.view_duration}
-                        className="text-primary transition-all duration-1000"
-                      />
-                    </svg>
-                    <div className="flex flex-col items-center">
-                      <Clock className="mb-1 h-6 w-6 text-primary" />
-                      <span className="text-2xl font-bold text-foreground">{timeLeft}s</span>
-                    </div>
+            {viewState === 'viewing' && (
+              <div className="flex w-full flex-col items-center gap-4">
+                <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-background/50">
+                  <svg className="absolute h-full w-full -rotate-90">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="58"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      className="text-muted"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="58"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      strokeDasharray={364}
+                      strokeDashoffset={364 - (364 * (currentAd.view_duration - timeLeft)) / currentAd.view_duration}
+                      className="text-primary transition-all duration-1000"
+                    />
+                  </svg>
+                  <div className="flex flex-col items-center">
+                    <Clock className="mb-1 h-6 w-6 text-primary" />
+                    <span className="text-2xl font-bold text-foreground">{timeLeft}s</span>
                   </div>
-                  <p className="text-center text-sm text-muted-foreground">
-                    Keep the ad tab open until the timer completes
+                </div>
+                <p className="text-center text-sm text-muted-foreground">
+                  Keep the ad tab open until the timer completes
+                </p>
+              </div>
+            )}
+
+            {viewState === 'completed' && (
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/20 pulse-ring">
+                  <CheckCircle className="h-10 w-10 text-success" />
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-medium text-foreground">View Completed!</p>
+                  <p className="text-sm text-muted-foreground">
+                    You earned {formatSatoshi(currentAd.reward_satoshi)}
                   </p>
                 </div>
-              )}
-
-              {/* Completed State */}
-              {viewState === 'completed' && (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/20 pulse-ring">
-                    <CheckCircle className="h-10 w-10 text-success" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-medium text-foreground">View Completed!</p>
-                    <p className="text-sm text-muted-foreground">
-                      You earned {formatSatoshi(currentAd.reward_satoshi)}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Error State */}
-              {viewState === 'error' && (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/20">
-                    <AlertCircle className="h-10 w-10 text-destructive" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-medium text-foreground">Error</p>
-                    <p className="text-sm text-destructive">{error}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap justify-center gap-4">
-                {viewState === 'idle' && (
-                  <Button onClick={() => startViewing()} size="lg" className="gap-2">
-                    <Play className="h-4 w-4" />
-                    Start Viewing ({currentAd.view_duration}s)
-                  </Button>
-                )}
-                {viewState === 'completed' && (
-                  <>
-                    <Button onClick={nextAd} size="lg">
-                      {currentAdIndex < ads.length - 1 ? 'Next Ad' : 'Finish'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={() => openSponsorLink('surf-completed')}
-                      className="gap-2"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Sponsor
-                    </Button>
-                  </>
-                )}
-                {viewState === 'error' && (
-                  <Button onClick={() => setViewState('idle')} variant="outline">
-                    Try Again
-                  </Button>
-                )}
               </div>
+            )}
+
+            {viewState === 'error' && (
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/20">
+                  <AlertCircle className="h-10 w-10 text-destructive" />
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-medium text-foreground">Error</p>
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-center gap-4">
+              {viewState === 'idle' && (
+                <Button onClick={() => startViewing()} size="lg" className="gap-2">
+                  <Play className="h-4 w-4" />
+                  Start Viewing ({currentAd.view_duration}s)
+                </Button>
+              )}
+              {viewState === 'completed' && (
+                <Button onClick={nextAd} size="lg">
+                  {currentAdIndex < ads.length - 1 ? 'Next Ad' : 'Finish'}
+                </Button>
+              )}
+              {viewState === 'error' && (
+                <Button onClick={() => setViewState('idle')} variant="outline">
+                  Try Again
+                </Button>
+              )}
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="hidden xl:block">
-          <div className="sticky top-24">
-            <AdSlot variant="skyscraper" />
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {viewState === 'completed' && <AdSlot variant="native" />}
-
-      <SponsorViewQueue
-        compact
-        title="More sponsor views"
-        description="Extra sponsor checks stay available between campaign views."
-      />
-
-      {/* Info */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">

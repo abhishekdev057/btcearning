@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Droplets, Bitcoin, Clock, Gift, AlertCircle } from 'lucide-react'
+import { Droplets, Bitcoin, Clock, Gift, AlertCircle, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatSatoshi } from '@/lib/types'
 import useSWR from 'swr'
 import { toast } from 'sonner'
-import { AdSlot, triggerRewardAdEvent } from '@/components/ads/ad-network'
-import { SponsorViewQueue } from '@/components/ads/sponsor-view-queue'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { LedgerRow } from '@/components/dashboard/ledger-row'
+import { EmptyState } from '@/components/dashboard/empty-state'
 
 const FAUCET_COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 const FAUCET_REWARD_MIN = 10
@@ -27,20 +28,21 @@ export default function FaucetPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    const [profileResult, faucetResult] = await Promise.all([
+    const [profileResult, recentClaimsResult] = await Promise.all([
       supabase.from('profiles').select('btc_balance').eq('id', user.id).single(),
       supabase.from('faucet_claims').select('claimed_at, amount_satoshi')
         .eq('user_id', user.id)
         .order('claimed_at', { ascending: false })
-        .limit(1)
-        .single()
+        .limit(5)
     ])
+
+    const recentClaims = recentClaimsResult.data || []
 
     return {
       user,
       balance: profileResult.data?.btc_balance || 0,
-      lastClaim: faucetResult.data?.claimed_at ? new Date(faucetResult.data.claimed_at) : null,
-      lastAmount: faucetResult.data?.amount_satoshi || null
+      lastClaim: recentClaims[0]?.claimed_at ? new Date(recentClaims[0].claimed_at) : null,
+      recentClaims,
     }
   })
 
@@ -78,7 +80,6 @@ export default function FaucetPage() {
     setIsClaiming(true)
     setError(null)
     setLastReward(null)
-    triggerRewardAdEvent('faucet-claim')
 
     try {
       const supabase = createClient()
@@ -106,20 +107,18 @@ export default function FaucetPage() {
     }
   }
 
+  const progressPercent = canClaim ? 100 : Math.min(100, ((FAUCET_COOLDOWN_MS - timeLeft) / FAUCET_COOLDOWN_MS) * 100)
+
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-border/70 bg-card/70 p-5">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">Hourly reward station</p>
-        <h1 className="mt-2 text-3xl font-bold text-foreground">Faucet</h1>
-        <p className="text-muted-foreground">Claim a protected reward every hour. Cooldown is enforced server-side.</p>
-      </div>
+      <PageHeader
+        eyebrow="Hourly reward station"
+        title="Faucet"
+        description="Claim a protected reward every hour. Cooldown is enforced server-side."
+        icon={Droplets}
+      />
 
-      <div className="hidden justify-center sm:flex">
-        <AdSlot variant="leaderboard" />
-      </div>
-
-      {/* Main Faucet Card */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_178px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="glass-panel overflow-hidden">
           <CardHeader className="border-b border-border/70 bg-chart-2/10 text-center">
             <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border border-chart-2/25 bg-chart-2/15 pulse-ring">
@@ -131,7 +130,6 @@ export default function FaucetPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-6 p-6">
-            {/* Reward Display */}
             {lastReward !== null && (
               <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/15 px-4 py-2">
                 <Gift className="h-5 w-5 text-success" />
@@ -141,7 +139,6 @@ export default function FaucetPage() {
               </div>
             )}
 
-            {/* Timer or Claim Button */}
             {!canClaim ? (
               <div className="flex w-full flex-col items-center gap-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -150,6 +147,12 @@ export default function FaucetPage() {
                 </div>
                 <div className="rounded-xl border border-border/70 bg-background/50 px-6 py-4 font-mono text-4xl font-bold text-foreground">
                   {formatTimeLeft(timeLeft)}
+                </div>
+                <div className="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-chart-2 transition-all duration-1000"
+                    style={{ width: `${progressPercent}%` }}
+                  />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Come back later to claim more free Bitcoin!
@@ -174,7 +177,6 @@ export default function FaucetPage() {
               </div>
             )}
 
-            {/* Current Balance */}
             <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/35 px-4 py-2">
               <Bitcoin className="h-4 w-4 text-primary" />
               <span className="text-sm text-muted-foreground">Your balance:</span>
@@ -185,25 +187,36 @@ export default function FaucetPage() {
           </CardContent>
         </Card>
 
-        <div className="hidden xl:block">
-          <div className="sticky top-24">
-            <AdSlot variant="skyscraper" />
-          </div>
-        </div>
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle className="text-base">Recent claims</CardTitle>
+            <CardDescription>Your last faucet payouts.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!userData?.recentClaims || userData.recentClaims.length === 0 ? (
+              <EmptyState
+                icon={Sparkles}
+                title="No claims yet"
+                description="Your faucet history will show up here once you claim."
+              />
+            ) : (
+              <div className="space-y-2">
+                {userData.recentClaims.map((claim, i) => (
+                  <LedgerRow
+                    key={`${claim.claimed_at}-${i}`}
+                    icon={Droplets}
+                    iconTone="info"
+                    title={`+${formatSatoshi(claim.amount_satoshi)}`}
+                    subtitle={new Date(claim.claimed_at).toLocaleString()}
+                    valueTone="success"
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <SponsorViewQueue
-        title="Faucet sponsor checks"
-        description={
-          canClaim
-            ? 'View sponsor placements before or after claiming.'
-            : 'Use these sponsor views while the faucet cools down.'
-        }
-      />
-
-      {lastReward !== null && <AdSlot variant="native" />}
-
-      {/* Info Card */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle className="text-lg text-foreground">How the Faucet Works</CardTitle>

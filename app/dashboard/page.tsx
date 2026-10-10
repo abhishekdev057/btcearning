@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { EmptyState } from '@/components/dashboard/empty-state'
+import { LedgerRow } from '@/components/dashboard/ledger-row'
+import { EarningsTrendChart } from '@/components/dashboard/earnings-trend-chart'
 import {
   ArrowRight,
   Bitcoin,
@@ -12,13 +14,13 @@ import {
   Megaphone,
   MousePointerClick,
   Play,
+  ShieldCheck,
   TrendingUp,
   Users,
   Wallet,
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatBtc, formatSatoshi } from '@/lib/types'
-import { AdSlot } from '@/components/ads/ad-network'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -28,10 +30,11 @@ export default async function DashboardPage() {
     redirect('/auth/login')
   }
 
-  const [profileResult, adsCountResult, transactionsResult, referralsResult, campaignResult] = await Promise.all([
+  const [profileResult, adsCountResult, transactionsResult, chartTransactionsResult, referralsResult, campaignResult] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('ads').select('id', { count: 'exact' }).eq('is_active', true),
     supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6),
+    supabase.from('transactions').select('amount_satoshi, created_at').eq('user_id', user.id).order('created_at', { ascending: true }).limit(500),
     supabase.from('referrals').select('id', { count: 'exact' }).eq('referrer_id', user.id),
     supabase.from('ads').select('id', { count: 'exact' }).eq('user_id', user.id),
   ])
@@ -54,45 +57,83 @@ export default async function DashboardPage() {
   const lastClaimTime = lastFaucet?.claimed_at ? new Date(lastFaucet.claimed_at).getTime() : 0
   const faucetAvailable = Date.now() - lastClaimTime >= faucetCooldown
 
+  // Build a 14-day cumulative balance trend from the ledger
+  const days = 14
+  const dayBuckets = Array.from({ length: days }, (_, i) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (days - 1 - i))
+    date.setHours(0, 0, 0, 0)
+    return date
+  })
+
+  const runningTransactions = chartTransactionsResult.data || []
+  let runningTotal = runningTransactions.reduce((sum, tx) => {
+    const txDate = new Date(tx.created_at)
+    return txDate < dayBuckets[0] ? sum + tx.amount_satoshi : sum
+  }, 0)
+
+  const chartData = dayBuckets.map((bucketStart, index) => {
+    const bucketEnd = index === days - 1 ? new Date() : dayBuckets[index + 1]
+    const dayTotal = runningTransactions
+      .filter((tx) => {
+        const txDate = new Date(tx.created_at)
+        return txDate >= bucketStart && txDate < bucketEnd
+      })
+      .reduce((sum, tx) => sum + tx.amount_satoshi, 0)
+
+    runningTotal += dayTotal
+    return {
+      date: bucketStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      balance: Math.max(runningTotal, 0),
+    }
+  })
+
   const quickActions = [
     {
       title: 'Surf Ads',
       description: `${availableAds} campaign${availableAds === 1 ? '' : 's'} available`,
       icon: MousePointerClick,
       href: '/dashboard/surf',
-      tone: 'primary',
     },
     {
       title: 'Faucet',
       description: faucetAvailable ? 'Ready to claim' : 'Cooldown active',
       icon: Droplets,
       href: '/dashboard/faucet',
-      tone: 'success',
     },
     {
       title: 'Referrals',
       description: `${totalReferrals} active referral${totalReferrals === 1 ? '' : 's'}`,
       icon: Users,
       href: '/dashboard/referrals',
-      tone: 'info',
     },
     {
       title: 'Withdraw',
       description: 'Request payout review',
       icon: Wallet,
       href: '/dashboard/withdraw',
-      tone: 'warning',
     },
   ] as const
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'ad_view': return <Play className="h-4 w-4 text-chart-3" />
-      case 'faucet': return <Droplets className="h-4 w-4 text-chart-2" />
-      case 'referral_bonus': return <Users className="h-4 w-4 text-success" />
-      case 'withdrawal': return <Wallet className="h-4 w-4 text-warning" />
-      case 'ad_deposit': return <Megaphone className="h-4 w-4 text-primary" />
-      default: return <Bitcoin className="h-4 w-4 text-primary" />
+      case 'ad_view': return Play
+      case 'faucet': return Droplets
+      case 'referral_bonus': return Users
+      case 'withdrawal': return Wallet
+      case 'ad_deposit': return Megaphone
+      default: return Bitcoin
+    }
+  }
+
+  const getTransactionTone = (type: string) => {
+    switch (type) {
+      case 'ad_view': return 'info' as const
+      case 'faucet': return 'info' as const
+      case 'referral_bonus': return 'success' as const
+      case 'withdrawal': return 'warning' as const
+      case 'ad_deposit': return 'primary' as const
+      default: return 'primary' as const
     }
   }
 
@@ -125,9 +166,17 @@ export default async function DashboardPage() {
         <MetricCard title="Network" value={totalReferrals} detail={`${totalCampaigns} advertiser campaign${totalCampaigns === 1 ? '' : 's'}`} icon={Users} tone="info" />
       </div>
 
-      <div className="hidden justify-center sm:flex">
-        <AdSlot variant="leaderboard" />
-      </div>
+      <Card className="glass-panel">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Balance trend</CardTitle>
+            <CardDescription>Cumulative ledger balance over the last 14 days.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <EarningsTrendChart data={chartData} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-7 xl:grid-cols-[1.05fr_0.95fr]">
         <Card className="glass-panel">
@@ -192,20 +241,15 @@ export default async function DashboardPage() {
             ) : (
               <div className="space-y-2">
                 {recentTransactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between rounded-lg border border-border/55 bg-background/45 p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                        {getTransactionIcon(tx.type)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium capitalize text-foreground">{tx.type.replace('_', ' ')}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <span className={`text-sm font-semibold ${tx.amount_satoshi >= 0 ? 'text-success' : 'text-warning'}`}>
-                      {tx.amount_satoshi >= 0 ? '+' : ''}{formatSatoshi(tx.amount_satoshi)}
-                    </span>
-                  </div>
+                  <LedgerRow
+                    key={tx.id}
+                    icon={getTransactionIcon(tx.type)}
+                    iconTone={getTransactionTone(tx.type)}
+                    title={tx.type.replace('_', ' ')}
+                    subtitle={new Date(tx.created_at).toLocaleDateString()}
+                    value={`${tx.amount_satoshi >= 0 ? '+' : ''}${formatSatoshi(tx.amount_satoshi)}`}
+                    valueTone={tx.amount_satoshi >= 0 ? 'success' : 'warning'}
+                  />
                 ))}
               </div>
             )}
@@ -213,12 +257,13 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <AdSlot variant="native" />
-
       <Card className="glass-panel overflow-hidden">
         <CardContent className="grid gap-6 p-5 md:grid-cols-3 md:p-6">
           <div className="md:col-span-2">
-            <h2 className="text-xl font-semibold">Reward system health</h2>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-success" />
+              <h2 className="text-xl font-semibold text-foreground">Reward system health</h2>
+            </div>
             <p className="mt-2 text-sm text-muted-foreground">
               Faucet cooldowns, ad campaign budgets, referral commissions, and payout requests are handled by database functions for a cleaner production path.
             </p>

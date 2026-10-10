@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
-import { AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
+import { AlertCircle, CheckCircle, ArrowLeft, Megaphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatSatoshi } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PageHeader } from '@/components/dashboard/page-header'
 
 export default function CreateAdPage() {
   const [title, setTitle] = useState('')
@@ -86,22 +87,25 @@ export default function CreateAdPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon">
-          <Link href="/dashboard/advertiser">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Create New Ad</h1>
-          <p className="text-muted-foreground">Set up your advertising campaign</p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Advertiser workspace"
+        title="Create New Ad"
+        description="Set up a budgeted campaign and reach verified viewers."
+        icon={Megaphone}
+        action={
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href="/dashboard/advertiser">
+              <ArrowLeft className="h-4 w-4" />
+              Back to campaigns
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Form */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="glass-panel">
             <CardHeader>
               <CardTitle className="text-foreground">Campaign Details</CardTitle>
               <CardDescription>Fill in the details for your ad</CardDescription>
@@ -216,7 +220,7 @@ export default function CreateAdPage() {
 
         {/* Preview & Summary */}
         <div className="space-y-6">
-          <Card>
+          <Card className="glass-panel">
             <CardHeader>
               <CardTitle className="text-foreground">Campaign Summary</CardTitle>
             </CardHeader>
@@ -242,7 +246,7 @@ export default function CreateAdPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-sm text-foreground">Tips for Better Ads</CardTitle>
             </CardHeader>

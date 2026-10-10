@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Eye, Bitcoin, TrendingUp, BarChart3 } from 'lucide-react'
 import { formatSatoshi } from '@/lib/types'
+import { MetricCard } from '@/components/dashboard/metric-card'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { EmptyState } from '@/components/dashboard/empty-state'
+import { CampaignViewsChart } from '@/components/dashboard/campaign-views-chart'
 
 export default async function AdvertiserStatsPage() {
   const supabase = await createClient()
@@ -12,13 +16,11 @@ export default async function AdvertiserStatsPage() {
     redirect('/auth/login')
   }
 
-  // Fetch user's ads with view counts
   const { data: ads } = await supabase
     .from('ads')
     .select('*')
     .eq('user_id', user.id)
 
-  // Get view data for all user's ads
   const adIds = ads?.map(ad => ad.id) || []
   const { data: views } = await supabase
     .from('ad_views')
@@ -26,12 +28,10 @@ export default async function AdvertiserStatsPage() {
     .in('ad_id', adIds)
     .order('viewed_at', { ascending: false })
 
-  // Calculate stats
   const totalViews = views?.length || 0
   const totalSpent = views?.reduce((sum, v) => sum + (v.earned_satoshi || 0), 0) || 0
   const averagePerView = totalViews > 0 ? Math.round(totalSpent / totalViews) : 0
 
-  // Group views by date for chart data
   const viewsByDate = views?.reduce((acc, view) => {
     const date = new Date(view.viewed_at).toLocaleDateString()
     acc[date] = (acc[date] || 0) + 1
@@ -41,15 +41,14 @@ export default async function AdvertiserStatsPage() {
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date()
     date.setDate(date.getDate() - (6 - i))
-    return date.toLocaleDateString()
+    return date
   })
 
-  const chartData = last7Days.map(date => ({
-    date,
-    views: viewsByDate[date] || 0
+  const chartData = last7Days.map((date) => ({
+    date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    views: viewsByDate[date.toLocaleDateString()] || 0,
   }))
 
-  // Per-ad stats
   const adStats = ads?.map(ad => {
     const adViews = views?.filter(v => v.ad_id === ad.id) || []
     return {
@@ -61,113 +60,49 @@ export default async function AdvertiserStatsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Campaign Statistics</h1>
-        <p className="text-muted-foreground">Track your advertising performance</p>
-      </div>
+      <PageHeader
+        eyebrow="Performance"
+        title="Campaign Statistics"
+        description="Track verified views, spend, and delivery across every campaign."
+        icon={BarChart3}
+      />
 
-      {/* Overview Stats */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Views</CardTitle>
-            <Eye className="h-4 w-4 text-chart-1" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalViews.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
-            <Bitcoin className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatSatoshi(totalSpent)}</div>
-            <p className="text-xs text-muted-foreground">Paid to viewers</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Per View</CardTitle>
-            <TrendingUp className="h-4 w-4 text-chart-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatSatoshi(averagePerView)}</div>
-            <p className="text-xs text-muted-foreground">Average cost</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Campaigns</CardTitle>
-            <BarChart3 className="h-4 w-4 text-chart-3" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{ads?.filter(a => a.is_active).length || 0}</div>
-            <p className="text-xs text-muted-foreground">Running now</p>
-          </CardContent>
-        </Card>
+        <MetricCard title="Total Views" value={totalViews.toLocaleString()} detail="All time" icon={Eye} tone="info" />
+        <MetricCard title="Total Spent" value={formatSatoshi(totalSpent)} detail="Paid to viewers" icon={Bitcoin} />
+        <MetricCard title="Avg. Per View" value={formatSatoshi(averagePerView)} detail="Average cost" icon={TrendingUp} tone="success" />
+        <MetricCard title="Active Campaigns" value={ads?.filter(a => a.is_active).length || 0} detail="Running now" icon={BarChart3} tone="warning" />
       </div>
 
-      {/* Views Chart */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <CardTitle className="text-foreground">Views (Last 7 Days)</CardTitle>
-          <CardDescription>Daily view count for your campaigns</CardDescription>
+          <CardDescription>Daily verified view count across your campaigns</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex h-[200px] items-end gap-2">
-            {chartData.map((day, i) => {
-              const maxViews = Math.max(...chartData.map(d => d.views), 1)
-              const height = (day.views / maxViews) * 100
-              return (
-                <div key={i} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="relative w-full flex-1">
-                    <div
-                      className="absolute bottom-0 w-full rounded-t bg-primary transition-all"
-                      style={{ height: `${Math.max(height, 2)}%` }}
-                    />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs font-medium text-foreground">{day.views}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <CampaignViewsChart data={chartData} />
         </CardContent>
       </Card>
 
-      {/* Per-Ad Stats */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <CardTitle className="text-foreground">Campaign Performance</CardTitle>
           <CardDescription>Breakdown by individual campaigns</CardDescription>
         </CardHeader>
         <CardContent>
           {adStats.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <BarChart3 className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">No campaigns yet</p>
-            </div>
+            <EmptyState icon={BarChart3} title="No campaigns yet" description="Launch a campaign to start seeing performance data here." />
           ) : (
             <div className="space-y-4">
               {adStats.map((ad) => {
-                const progress = ad.total_budget > 0 
-                  ? ((ad.total_budget - ad.remaining_budget) / ad.total_budget) * 100 
+                const progress = ad.total_budget > 0
+                  ? ((ad.total_budget - ad.remaining_budget) / ad.total_budget) * 100
                   : 0
                 return (
-                  <div key={ad.id} className="rounded-lg bg-muted/30 p-4">
-                    <div className="flex items-center justify-between mb-2">
+                  <div key={ad.id} className="rounded-lg border border-border/60 bg-background/45 p-4">
+                    <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-foreground">{ad.title}</h3>
-                      <span className={`text-xs px-2 py-1 rounded ${ad.is_active ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'}`}>
+                      <span className={`text-xs px-2 py-1 rounded ${ad.is_active ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
                         {ad.is_active ? 'Active' : 'Paused'}
                       </span>
                     </div>
@@ -189,7 +124,7 @@ export default async function AdvertiserStatsPage() {
                         <p className="font-medium text-foreground">{formatSatoshi(ad.reward_satoshi)}/view</p>
                       </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted">
+                    <div className="h-1.5 w-full rounded-full bg-muted">
                       <div
                         className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${progress}%` }}

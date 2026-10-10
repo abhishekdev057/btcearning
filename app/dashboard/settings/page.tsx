@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Settings, User, Shield, Bitcoin } from 'lucide-react'
 import { formatSatoshi, formatBtc } from '@/lib/types'
+import { PageHeader } from '@/components/dashboard/page-header'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -22,13 +23,15 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings</p>
-      </div>
+      <PageHeader
+        eyebrow="Account"
+        title="Settings"
+        description="Manage your account details, balances, and referral identity."
+        icon={Settings}
+      />
 
       {/* Account Info */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
@@ -57,7 +60,7 @@ export default async function SettingsPage() {
       </Card>
 
       {/* Balance Info */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Bitcoin className="h-5 w-5 text-primary" />
@@ -87,7 +90,7 @@ export default async function SettingsPage() {
       </Card>
 
       {/* Referral Info */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -118,7 +121,7 @@ export default async function SettingsPage() {
       </Card>
 
       {/* Security Notice */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />

@@ -10,6 +10,9 @@ import { createClient } from '@/lib/supabase/client'
 import { formatSatoshi } from '@/lib/types'
 import useSWR from 'swr'
 import { toast } from 'sonner'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { LedgerRow } from '@/components/dashboard/ledger-row'
+import { EmptyState } from '@/components/dashboard/empty-state'
 
 const MIN_WITHDRAWAL = 10000 // 10,000 satoshi
 
@@ -96,35 +99,42 @@ export default function WithdrawPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-success" />
+      case 'completed': return CheckCircle
       case 'pending':
-      case 'processing':
-        return <Clock className="h-4 w-4 text-warning" />
-      case 'rejected':
-        return <XCircle className="h-4 w-4 text-destructive" />
-      default:
-        return <Clock className="h-4 w-4 text-muted-foreground" />
+      case 'processing': return Clock
+      case 'rejected': return XCircle
+      default: return Clock
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusTone = (status: string): 'success' | 'warning' | 'destructive' | 'muted' => {
     switch (status) {
-      case 'completed': return 'text-success'
+      case 'completed': return 'success'
       case 'pending':
-      case 'processing': return 'text-warning'
-      case 'rejected': return 'text-destructive'
-      default: return 'text-muted-foreground'
+      case 'processing': return 'warning'
+      case 'rejected': return 'destructive'
+      default: return 'muted'
+    }
+  }
+
+  const getStatusIconTone = (status: string): 'success' | 'warning' | 'destructive' | 'primary' => {
+    switch (status) {
+      case 'completed': return 'success'
+      case 'pending':
+      case 'processing': return 'warning'
+      case 'rejected': return 'destructive'
+      default: return 'primary'
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-border/70 bg-card/70 p-5">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">Payout desk</p>
-        <h1 className="mt-2 text-3xl font-bold text-foreground">Withdraw</h1>
-        <p className="text-muted-foreground">Submit Bitcoin payout requests with manual review and ledger tracking.</p>
-      </div>
+      <PageHeader
+        eyebrow="Payout desk"
+        title="Withdraw"
+        description="Submit Bitcoin payout requests with manual review and ledger tracking."
+        icon={Wallet}
+      />
 
       {/* Balance Card */}
       <Card className="glass-panel shine-edge">
@@ -235,34 +245,20 @@ export default function WithdrawPage() {
         </CardHeader>
         <CardContent>
           {!data?.withdrawals || data.withdrawals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Wallet className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">No withdrawals yet</p>
-            </div>
+            <EmptyState icon={Wallet} title="No withdrawals yet" description="Submitted payout requests will appear here." />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {data.withdrawals.map((withdrawal) => (
-                <div key={withdrawal.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 p-4">
-                  <div className="flex items-center gap-3">
-                    {getStatusIcon(withdrawal.status)}
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {formatSatoshi(withdrawal.amount_satoshi)}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {withdrawal.btc_address}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-medium capitalize ${getStatusColor(withdrawal.status)}`}>
-                      {withdrawal.status}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(withdrawal.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
+                <LedgerRow
+                  key={withdrawal.id}
+                  icon={getStatusIcon(withdrawal.status)}
+                  iconTone={getStatusIconTone(withdrawal.status)}
+                  title={formatSatoshi(withdrawal.amount_satoshi)}
+                  subtitle={withdrawal.btc_address}
+                  value={withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
+                  valueTone={getStatusTone(withdrawal.status)}
+                  badge={<span className="text-[10px] text-muted-foreground">{new Date(withdrawal.created_at).toLocaleDateString()}</span>}
+                />
               ))}
             </div>
           )}

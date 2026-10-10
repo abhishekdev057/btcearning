@@ -7,6 +7,9 @@ import { Megaphone, PlusCircle, Eye, Bitcoin, ExternalLink, Play } from 'lucide-
 import Link from 'next/link'
 import { formatSatoshi } from '@/lib/types'
 import { ToggleAdStatus } from '@/components/dashboard/toggle-ad-status'
+import { MetricCard } from '@/components/dashboard/metric-card'
+import { PageHeader } from '@/components/dashboard/page-header'
+import { EmptyState } from '@/components/dashboard/empty-state'
 
 export default async function AdvertiserPage() {
   const supabase = await createClient()
@@ -16,14 +19,12 @@ export default async function AdvertiserPage() {
     redirect('/auth/login')
   }
 
-  // Fetch user's ads
   const { data: ads } = await supabase
     .from('ads')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  // Calculate stats
   const totalAds = ads?.length || 0
   const activeAds = ads?.filter(ad => ad.is_active).length || 0
   const totalViews = ads?.reduce((sum, ad) => sum + (ad.total_views || 0), 0) || 0
@@ -31,87 +32,46 @@ export default async function AdvertiserPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">My Campaigns</h1>
-          <p className="text-muted-foreground">Manage your advertising campaigns</p>
-        </div>
-        <Button asChild className="gap-2">
-          <Link href="/dashboard/advertiser/create">
-            <PlusCircle className="h-4 w-4" />
-            Create Ad
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Advertiser workspace"
+        title="My Campaigns"
+        description="Manage budget, pause or resume campaigns, and track delivery across the network."
+        icon={Megaphone}
+        action={
+          <Button asChild className="gap-2">
+            <Link href="/dashboard/advertiser/create">
+              <PlusCircle className="h-4 w-4" />
+              Create Ad
+            </Link>
+          </Button>
+        }
+      />
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Campaigns</CardTitle>
-            <Megaphone className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalAds}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Ads</CardTitle>
-            <Play className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{activeAds}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Views</CardTitle>
-            <Eye className="h-4 w-4 text-chart-3" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalViews.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
-            <Bitcoin className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatSatoshi(totalSpent)}</div>
-          </CardContent>
-        </Card>
+        <MetricCard title="Total Campaigns" value={totalAds} detail="Created all-time" icon={Megaphone} />
+        <MetricCard title="Active Ads" value={activeAds} detail="Currently serving" icon={Play} tone="success" />
+        <MetricCard title="Total Views" value={totalViews.toLocaleString()} detail="Verified completions" icon={Eye} tone="info" />
+        <MetricCard title="Total Spent" value={formatSatoshi(totalSpent)} detail="Paid to viewers" icon={Bitcoin} tone="warning" />
       </div>
 
-      {/* Ads List */}
-      <Card>
+      <Card className="glass-panel">
         <CardHeader>
           <CardTitle className="text-foreground">Your Ads</CardTitle>
           <CardDescription>All your advertising campaigns</CardDescription>
         </CardHeader>
         <CardContent>
           {!ads || ads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Megaphone className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium text-foreground">No Campaigns Yet</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2 mb-4">
-                Create your first ad campaign to start getting views
-              </p>
-              <Button asChild>
-                <Link href="/dashboard/advertiser/create">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create Your First Ad
-                </Link>
-              </Button>
-            </div>
+            <EmptyState
+              icon={Megaphone}
+              title="No campaigns yet"
+              description="Create your first ad campaign to start getting verified views."
+              actionHref="/dashboard/advertiser/create"
+              actionLabel="Create Your First Ad"
+            />
           ) : (
             <div className="space-y-4">
               {ads.map((ad) => (
-                <div key={ad.id} className="rounded-lg border border-border bg-card p-4">
+                <div key={ad.id} className="rounded-lg border border-border/60 bg-background/45 p-4 transition-colors hover:border-border">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -128,8 +88,8 @@ export default async function AdvertiserPage() {
                     </div>
                     <ToggleAdStatus adId={ad.id} isActive={ad.is_active} />
                   </div>
-                  
-                  <div className="mt-4 grid grid-cols-4 gap-4 border-t border-border pt-4">
+
+                  <div className="mt-4 grid grid-cols-4 gap-4 border-t border-border/60 pt-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Reward</p>
                       <p className="text-sm font-medium text-foreground">{formatSatoshi(ad.reward_satoshi)}</p>
@@ -146,6 +106,13 @@ export default async function AdvertiserPage() {
                       <p className="text-xs text-muted-foreground">Budget Left</p>
                       <p className="text-sm font-medium text-foreground">{formatSatoshi(ad.remaining_budget)}</p>
                     </div>
+                  </div>
+
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${ad.total_budget > 0 ? ((ad.total_budget - ad.remaining_budget) / ad.total_budget) * 100 : 0}%` }}
+                    />
                   </div>
                 </div>
               ))}
