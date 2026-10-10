@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function timingSafeEqualStrings(a: string, b: string) {
   const bufA = Buffer.from(a, 'utf8')
   const bufB = Buffer.from(b, 'utf8')
@@ -47,6 +49,7 @@ async function handlePostback(params: URLSearchParams) {
   const offerName = params.get('offer_name')
   const signature = params.get('signature')
   const signature2 = params.get('signature2')
+  const debug = params.get('debug') === '1'
 
   if (!subId || !transId || !reward || !status) {
     return new NextResponse('error', { status: 400 })
@@ -55,6 +58,19 @@ async function handlePostback(params: URLSearchParams) {
   if (!verifySignature(subId, transId, reward, secret, signature, signature2)) {
     console.warn('[offerwall postback] signature mismatch', { subId, transId })
     return new NextResponse('error', { status: 401 })
+  }
+
+  // The OfferwallApi dashboard's "Integration test" sends debug=1 with a
+  // placeholder subId that isn't a real user — confirm the signature checks
+  // out and stop there, without touching the ledger.
+  if (debug) {
+    console.log('[offerwall postback] debug postback verified, skipping credit', { subId, transId })
+    return new NextResponse('ok', { status: 200 })
+  }
+
+  if (!UUID_RE.test(subId)) {
+    console.error('[offerwall postback] subId is not a valid user id', { subId, transId })
+    return new NextResponse('error', { status: 400 })
   }
 
   const rewardSatoshi = Math.round(Number(reward))
